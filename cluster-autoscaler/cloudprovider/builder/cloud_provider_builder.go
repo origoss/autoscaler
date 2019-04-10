@@ -23,6 +23,7 @@ import (
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/aws"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/azure"
+	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/dummy"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/gce"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider/kubemark"
 	"k8s.io/client-go/informers"
@@ -41,6 +42,7 @@ var AvailableCloudProviders = []string{
 	gce.ProviderNameGCE,
 	gce.ProviderNameGKE,
 	kubemark.ProviderName,
+	dummy.ProviderName,
 }
 
 // DefaultCloudProvider is GCE.
@@ -87,6 +89,8 @@ func (b CloudProviderBuilder) Build(discoveryOpts cloudprovider.NodeGroupDiscove
 		return b.buildAzure(discoveryOpts, resourceLimiter)
 	case kubemark.ProviderName:
 		return b.buildKubemark(discoveryOpts, resourceLimiter)
+	case dummy.ProviderName:
+		return b.buildDummy()
 	case "":
 		// Ideally this would be an error, but several unit tests of the
 		// StaticAutoscaler depend on this behaviour.
@@ -206,4 +210,19 @@ func (b CloudProviderBuilder) buildKubemark(do cloudprovider.NodeGroupDiscoveryO
 		glog.Fatalf("Failed to create Kubemark cloud provider: %v", err)
 	}
 	return provider
+}
+
+func (b CloudProviderBuilder) buildDummy() cloudprovider.CloudProvider {
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	config, err := kubeConfig.ClientConfig()
+	if err != nil {
+		glog.Fatalf("Failed to get kubernetes config for: %v", err)
+	}
+	kubeClient := kubeclient.NewForConfigOrDie(config)
+
+	return &dummy.DummyCloudProvider{
+		Clientset: kubeClient,
+	}
 }
