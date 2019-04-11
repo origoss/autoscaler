@@ -33,7 +33,7 @@ func (dng *DummyNodeGroup) MinSize() int {
 }
 
 func (dng *DummyNodeGroup) TargetSize() (int, error) {
-	glog.Infof("Reporting TargetSize: %d", len(dng.nodes))
+	glog.V(1).Infof("Reporting TargetSize: %d", len(dng.nodes))
 	return len(dng.nodes), nil
 }
 
@@ -42,16 +42,16 @@ func (dng *DummyNodeGroup) IncreaseSize(delta int) error {
 	if *dummyWebHook != "" {
 		req, err := http.NewRequest("PUT", *dummyWebHook+fmt.Sprintf("/%d", delta), nil)
 		if err != nil {
-			glog.Errorf("Request cannot be forged for dummy webhook: %+v", err)
+			glog.Errorf("PUT request cannot be forged for dummy webhook: %+v", err)
 			return nil
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			glog.Errorf("Error sending request to dummy webhook: %+v", err)
+			glog.Errorf("error sending PUT request to dummy webhook: %+v", err)
 			return nil
 		}
 		if resp.StatusCode > 299 || resp.StatusCode < 200 {
-			glog.Errorf("Dummy webhook returned %d", resp.StatusCode)
+			glog.Errorf("dummy webhook returned %d", resp.StatusCode)
 		}
 	}
 	return nil
@@ -59,6 +59,23 @@ func (dng *DummyNodeGroup) IncreaseSize(delta int) error {
 
 func (dng *DummyNodeGroup) DeleteNodes(nodes []*apiv1.Node) error {
 	glog.Infof("DeleteNodes invoked (%d nodes)", len(nodes))
+	if *dummyWebHook != "" {
+		for _, node := range nodes {
+			req, err := http.NewRequest("DELETE", *dummyWebHook+fmt.Sprintf("/%s", node.Name), nil)
+			if err != nil {
+				glog.Errorf("DELETE request cannot be forged for dummy webhook: %+v", err)
+				return nil
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				glog.Errorf("error sending DELETE request to dummy webhook: %+v", err)
+				return nil
+			}
+			if resp.StatusCode > 299 || resp.StatusCode < 200 {
+				glog.Errorf("dummy webhook returned %d", resp.StatusCode)
+			}
+		}
+	}
 	return nil
 }
 

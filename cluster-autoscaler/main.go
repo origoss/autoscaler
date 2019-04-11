@@ -169,6 +169,10 @@ func createAutoscalingOptions() context.AutoscalingOptions {
 		glog.Fatalf("Failed to parse flags: %v", err)
 	}
 
+	// dummy cloud provider does not support scale down
+	if *cloudProviderFlag == "dummy" {
+		*scaleDownEnabled = false
+	}
 	return context.AutoscalingOptions{
 		CloudConfig:                      *cloudConfig,
 		CloudProviderName:                *cloudProviderFlag,

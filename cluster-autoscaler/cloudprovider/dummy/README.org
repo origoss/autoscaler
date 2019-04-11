@@ -1,0 +1,53 @@
+#+options: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:t
+#+options: broken-links:nil c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+options: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t tags:t
+#+options: tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+title: Dummy CloudProvider for Kubernetes Cluster-Autoscaler
+#+date: <2019-04-10 Wed>
+#+author: Gergely Szabo
+#+email: gergely.szabo@origoss.com
+#+language: en
+#+select_tags: export
+#+exclude_tags: noexport
+#+creator: Emacs 27.0.50 (Org mode 9.2.2)
+
+* Purpose
+
+  Kubernetes cluster autoscaler can detect if a Kubernetes cluster is saturated
+  (i.e. some pods cannot be started due to lack of node resources) or the
+  cluster has excess resources (i.e. the cluster could operate with less nodes
+  by re-distributing the pods).
+  
+  Unfortunately, the cluster autoscaler is tightly coupled with the available
+  cloud providers (aws, azure, gce, gke, kubemark). 
+
+  The dummy cloud provider for the Kubernetes cluster autoscaler let's you
+  detect when you Kubernetes cluster is saturated leveraging on the
+  sophisticated algorithm implemented by the cluster autoscaler project.
+  
+  The cluster autoscaler periodically checks the state of the Kubernetes
+  cluster. With a traditional cloud provider, it would trigger node creation and
+  deletion operations when necessary. With the dummy provider, it simply calls a
+  pre-configured web hook. This way you can use it in any environment.
+
+* Usage 
+  
+  You can start the cluster autoscaler with the following command:
+
+  #+begin_src bash :eval never
+    cluster-autoscaler --kubeconfig ~/.kube/config \
+                       --cloud-provider dummy      \
+                       --dummyhook http://localhost:3030
+  #+end_src
+
+  Each time the cluster autoscaler detects the need for scaling out, it sends a
+  HTTP PUT request to ~http://localhost:3030~.
+  
+  It will use the request URI ~/<number>~ where the ~<number>~ indicates how
+  many new nodes are needed according the to the cluster autoscaler algorithm.
+  
+* Limitations 
+
+  The current implementation of the dummy cloud provider does not let you detect
+  the case for scaling down. The ~--cloud-provider dummy~ switch implicitly sets
+  ~--scale-down-enabled~ value to ~false~.
